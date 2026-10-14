@@ -1,0 +1,15 @@
+# Android / Gradle 构建产物
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/captures/
+*.iml
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# 说明：android/app/src/main/assets/www/ 是 tools/sync-assets.mjs 生成的拷贝，
+# 刻意一并提交，这样用 Android Studio 打开就能直接构建。改了网页代码记得重新同步。

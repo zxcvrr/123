@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与网页主题一致的背景色，避免启动瞬间白屏闪一下 -->
+    <color name="window_bg">#FF0B0F17</color>
+    <!-- 自适应图标背景（与 PWA 图标渐变起点一致） -->
+    <color name="ic_launcher_background">#FF1B3FA0</color>
+</resources>

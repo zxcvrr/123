@@ -1,0 +1,68 @@
+name: Build APK
+
+# 在没有安装 Android SDK 的机器上也能拿到 APK：
+# 把 deepseek-mobile 作为仓库根目录推上去，Actions 会自动构建，
+# 构建好的 app-debug.apk 在本次运行的 Artifacts 里下载。
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:        # 也可以在 Actions 页面手动点一下运行
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node（只用来同步网页资源）
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 同步网页资源到 Android assets
+        run: node tools/sync-assets.mjs
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # GitHub 的 ubuntu runner 本来就预装了 Android SDK 与 cmdline-tools，
+      # 这一步只是多一层保险：即使这个 action 本身出问题（版本变动、被弃用），
+      # continue-on-error 会放行，下面照样用预装的 SDK 构建。
+      - name: 准备 Android 命令行工具（可选，失败则用预装 SDK）
+        uses: android-actions/setup-android@v3
+        continue-on-error: true
+
+      - name: 接受 SDK 许可
+        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
+
+      - name: 安装 SDK 组件
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
+      - name: 准备 Gradle（AGP 8.5 需要 Gradle 8.7+）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: 构建 debug APK
+        working-directory: android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepseek-mobile-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30

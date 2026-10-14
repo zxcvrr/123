@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>DeepSeek 小助手</title>
+<meta name="theme-color" content="#0b0f17" />
+<meta name="color-scheme" content="dark" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="DeepSeek" />
+<meta name="description" content="在手机上直接调用 DeepSeek 模型 API 的小 App" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="apple-touch-icon" href="./icons/icon-192.png" />
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+
+<header>
+  <button id="menuBtn" class="icon-btn" type="button" aria-label="会话列表">☰</button>
+  <div class="title" id="title">DeepSeek</div>
+  <button id="balanceBtn" class="icon-btn text" type="button">余额</button>
+  <button id="settingsBtn" class="icon-btn" type="button" aria-label="设置">⚙</button>
+</header>
+
+<main id="messages">
+  <div class="empty">
+    <h2>DeepSeek 小助手</h2>
+    <p>先在右上角 ⚙ 填入 API Key，然后直接提问。</p>
+  </div>
+</main>
+
+<div class="composer">
+  <div class="row">
+    <textarea id="input" rows="1" placeholder="问点什么…（Shift+Enter 换行）" autocomplete="off"></textarea>
+    <button id="send" class="send" type="button">发送</button>
+  </div>
+</div>
+
+<div id="backdrop" class="backdrop"></div>
+
+<!-- 会话抽屉 -->
+<aside id="drawer" class="drawer">
+  <div class="head">
+    <button id="newChatBtn" class="btn primary" type="button" style="margin:0">＋ 新会话</button>
+  </div>
+  <div class="list" id="drawerList"></div>
+</aside>
+
+<!-- 设置面板 -->
+<section id="sheet" class="sheet">
+  <h2>设置</h2>
+
+  <div class="field">
+    <label for="fKey">DeepSeek API Key</label>
+    <input id="fKey" type="password" placeholder="sk-…" autocomplete="off" autocapitalize="off" spellcheck="false" />
+    <div class="hint">
+      Key 在 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer">platform.deepseek.com</a> 申请，按量计费。
+      本 App 是纯前端页面，Key 只会发往 <code>api.deepseek.com</code>。
+    </div>
+  </div>
+
+  <div class="field inline">
+    <input id="fRemember" type="checkbox" />
+    <label for="fRemember">在这台设备上记住 Key（取消则只保留到关闭页面）</label>
+  </div>
+
+  <div class="field">
+    <label for="fModel">模型</label>
+    <select id="fModel"></select>
+  </div>
+
+  <div class="grid2">
+    <div class="field">
+      <label for="fThinking">思考模式</label>
+      <select id="fThinking">
+        <option value="enabled">开启（带思维链）</option>
+        <option value="disabled">关闭（更快更省）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="fEffort">思考强度</label>
+      <select id="fEffort"></select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="fSystem">系统提示词</label>
+    <textarea id="fSystem" placeholder="You are a helpful assistant."></textarea>
+  </div>
+
+  <div class="grid2">
+    <div class="field">
+      <label for="fTemp">temperature（留空用默认）</label>
+      <input id="fTemp" type="number" min="0" max="2" step="0.1" inputmode="decimal" placeholder="默认" />
+    </div>
+    <div class="field">
+      <label for="fMax">max_tokens（留空用默认）</label>
+      <input id="fMax" type="number" min="1" step="1" inputmode="numeric" placeholder="默认" />
+    </div>
+  </div>
+
+  <button id="saveSettings" class="btn primary" type="button">保存</button>
+  <button id="exportBtn" class="btn" type="button">导出当前会话为 Markdown</button>
+  <button id="clearKey" class="btn" type="button">清除本机保存的 Key</button>
+  <button id="wipeBtn" class="btn danger" type="button">清空全部会话与设置</button>
+  <div class="hint" style="margin-top:12px">
+    思考模式下 temperature 不生效，top_p 有效区间为 0.95–1.0。
+  </div>
+</section>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="./app.js"></script>
+</body>
+</html>
