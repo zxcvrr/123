@@ -35,20 +35,45 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # GitHub 的 ubuntu runner 本来就预装了 Android SDK 与 cmdline-tools，
-      # 这一步只是多一层保险：即使这个 action 本身出问题（版本变动、被弃用），
-      # continue-on-error 会放行，下面照样用预装的 SDK 构建。
-      - name: 准备 Android 命令行工具（可选，失败则用预装 SDK）
-        uses: android-actions/setup-android@v3
-        continue-on-error: true
-
-      - name: 接受 SDK 许可
-        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
-
-      - name: 安装 SDK 组件
+      # 不依赖 android-actions/setup-android：实测它并不会把 sdkmanager 放进 PATH，
+      # 而 runner 镜像本来就预装了 SDK（ANDROID_HOME=/usr/local/lib/android/sdk）。
+      # 这里自己按候选位置找 sdkmanager；找不到也放行，交给 Gradle 使用/自动下载预装组件。
+      # 同时打印 SDK 实况，万一 platform 版本不匹配，看日志就能定位。
+      - name: 准备 Android SDK
         run: |
-          echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          SDK="${ANDROID_HOME:-}"
+          if [ -z "$SDK" ]; then SDK="${ANDROID_SDK_ROOT:-}"; fi
+          if [ -z "$SDK" ]; then SDK="/usr/local/lib/android/sdk"; fi
+          echo "SDK 路径: $SDK"
+
+          echo "--- 预装 platforms ---"
+          ls -1 "$SDK/platforms" 2>/dev/null || echo "(没有 platforms 目录)"
+          echo "--- 预装 build-tools ---"
+          ls -1 "$SDK/build-tools" 2>/dev/null || echo "(没有 build-tools 目录)"
+          echo "--- 许可文件 ---"
+          ls -1 "$SDK/licenses" 2>/dev/null || echo "(没有 licenses 目录)"
+
+          # 逐个候选位置找 sdkmanager：PATH → cmdline-tools/*/bin → 全盘兜底
+          SDKM="$(command -v sdkmanager 2>/dev/null || true)"
+          if [ -z "$SDKM" ]; then
+            SDKM="$(ls -1 "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -n 1 || true)"
+          fi
+          if [ -z "$SDKM" ]; then
+            SDKM="$(find "$SDK" -maxdepth 4 -type f -name sdkmanager 2>/dev/null | head -n 1 || true)"
+          fi
+
+          if [ -z "$SDKM" ]; then
+            echo "::warning::未找到 sdkmanager，跳过组件安装；Gradle 会使用或自动下载预装组件"
+            exit 0
+          fi
+
+          echo "使用 sdkmanager: $SDKM"
+          yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+          if "$SDKM" --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"; then
+            echo "SDK 组件已就绪"
+          else
+            echo "::warning::组件安装失败，继续用已有组件构建"
+          fi
 
       - name: 准备 Gradle（AGP 8.5 需要 Gradle 8.7+）
         uses: gradle/actions/setup-gradle@v4
@@ -57,7 +82,12 @@ jobs:
 
       - name: 构建 debug APK
         working-directory: android
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: |
+          echo "--- 环境 ---"
+          java -version 2>&1 | head -n 1
+          gradle --version | head -n 6
+          echo "--- 开始构建 ---"
+          gradle assembleDebug --no-daemon --stacktrace
 
       - name: 上传 APK
         uses: actions/upload-artifact@v4
